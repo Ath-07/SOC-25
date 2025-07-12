@@ -1,80 +1,98 @@
 import pandas as pd
-import numpy as np
+
+# Load the dataset
+ratings_df = pd.read_csv(r"C:\Users\athar\coding\test\movie_rating.csv")
+
+# Create a user-item matrix
+user_item_matrix = ratings_df.pivot_table(index='user_emb_id', columns='movie_emb_id', values='rating').fillna(0)
+#print(user_item_matrix)
+
 from sklearn.neighbors import NearestNeighbors
-from scipy.sparse import csr_matrix
 
-class KNNRecommender:
-    def __init__(self, ratings_df, movies_df, k=10):
-        self.k = k
-        self.ratings_df = ratings_df
-        self.movies_df = movies_df
-        self.user_item_matrix, self.user_ids, self.movie_ids = self._create_user_item_matrix()
-        self.model = self._fit_knn()
+# Fit k-NN model
+knn = NearestNeighbors(metric='cosine', algorithm='brute')
+knn.fit(user_item_matrix)
 
-        # Create mappings for easy lookup
-        self.movieId_to_title = dict(zip(movies_df['movieId'], movies_df['title']))
-        self.title_to_movieId = dict(zip(movies_df['title'], movies_df['movieId']))
-        self.userId_to_index = {uid: idx for idx, uid in enumerate(self.user_ids)}
-        self.index_to_userId = {idx: uid for idx, uid in enumerate(self.user_ids)}
+# Choose user index (you can input your own later)
+user_index = 0
 
-    def _create_user_item_matrix(self):
-        user_item = self.ratings_df.pivot_table(index='user_id', columns='movieId', values='rating', fill_value=0)
-        user_ids = user_item.index.tolist()
-        movie_ids = user_item.columns.tolist()
-        return csr_matrix(user_item.values), user_ids, movie_ids
+# Get similar users
+distances, indices = knn.kneighbors([user_item_matrix.iloc[user_index]], n_neighbors=6)
 
-    def _fit_knn(self):
-        model = NearestNeighbors(metric='cosine', algorithm='brute')
-        model.fit(self.user_item_matrix)
-        return model
+# Collect movies from similar users
+similar_users = user_item_matrix.iloc[indices.flatten()[1:]]
+mean_ratings = similar_users.mean(axis=0)
 
-    def recommend_movies(self, user_id, num_recommendations=10, min_rating=4.0):
-        if user_id not in self.userId_to_index:
-            print(f"User {user_id} not found.")
-            return []
+# Recommend top N movies the target user hasn't seen
+user_ratings = user_item_matrix.iloc[user_index]
+unrated_movies = user_ratings[user_ratings == 0]
+recommendations = mean_ratings[unrated_movies.index].sort_values(ascending=False).head(5)
 
-        user_idx = self.userId_to_index[user_id]
-        user_vector = self.user_item_matrix[user_idx]
+# Output recommended movie IDs
+recommended_movie_ids = recommendations.index.tolist()
+print(recommended_movie_ids)
 
-        # Find k nearest neighbors (excluding the user themself)
-        distances, indices = self.model.kneighbors(user_vector, n_neighbors=self.k + 1)
-        neighbor_indices = indices.flatten()[1:]  # skip the first (the user themself)
+movies_df = pd.read_csv(r"C:\Users\athar\coding\test\test_data.csv")
 
-        # Aggregate ratings from neighbors
-        neighbor_ratings = self.user_item_matrix[neighbor_indices].toarray()
-        avg_ratings = neighbor_ratings.mean(axis=0)
+# Map movieId to title
+movie_id_to_title = dict(zip(movies_df['movieId'], movies_df['title']))
 
-        # Get movies the user has already rated
-        user_rated = set(np.where(user_vector.toarray().flatten() > 0)[0])
+# Print movie titles for recommendations
+print("\nTop 5 recommended movies:")
+for movie_id in recommended_movie_ids:
+    print(movie_id_to_title.get(movie_id, f"Movie {movie_id}"))
 
-        # Recommend movies not yet rated by the user, sorted by neighbors' average rating
-        recommendations = []
-        for idx in np.argsort(avg_ratings)[::-1]:
-            if idx not in user_rated:
-                movie_id = self.movie_ids[idx]
-                title = self.movieId_to_title.get(movie_id, "Unknown")
-                recommendations.append(title)
-                if len(recommendations) == num_recommendations:
-                    break
-        return recommendations
+def precision_at_k(recommended, relevant, k):
+    recommended_at_k = recommended[:k]
+    relevant_set = set(relevant)
+    hits = sum(1 for movie in recommended_at_k if movie in relevant_set)
+    return hits / k
 
-# Example usage:
-if __name__ == "__main__":
-    ratings_df = pd.read_csv(r"C:\Users\athar\coding\SOC-25\Week_4\movie_rating.csv")
-    movies_df = pd.read_csv(r"C:\Users\athar\coding\SOC-25\Week_4\test_data.csv")
-    recommender = KNNRecommender(ratings_df, movies_df, k=10)
-    
-    # Prompt user for user ID input
-    user_id_input = input("Enter user ID to get recommendations: ")
+def recall_at_k(recommended, relevant, k):
+    relevant_set = set(relevant)
+    hits = sum(1 for movie in recommended[:k] if movie in relevant_set)
+    return hits / len(relevant) if relevant else 0
+
+# ----- Evaluation for Multiple Users -----
+k = 5
+num_users_to_test = 20  # You can increase this
+
+precisions = []
+recalls = []
+
+for user_index in range(num_users_to_test):
     try:
-        user_id = int(user_id_input)
-        recs = recommender.recommend_movies(user_id, num_recommendations=10)
-        if recs:
-            print(f"\nRecommendations for user {user_id}:")
-            for title in recs:
-                print(title)
-        else:
-            print(f"No recommendations found for user {user_id}.")
-    except ValueError:
-        print("Invalid input. Please enter a valid integer user ID.")
+        # Get current user and recommendations
+        user_vector = user_item_matrix.iloc[user_index]
+        user_id = user_item_matrix.index[user_index]
 
+        distances, indices = knn.kneighbors([user_vector], n_neighbors=6)
+        similar_users = user_item_matrix.iloc[indices.flatten()[1:]]
+        mean_ratings = similar_users.mean(axis=0)
+
+        user_ratings = user_vector
+        unrated_movies = user_ratings[user_ratings == 0]
+        recommendations = mean_ratings[unrated_movies.index].sort_values(ascending=False).head(k)
+        recommended_ids = recommendations.index.tolist()
+
+        # Get relevant movies for the user (ground truth)
+        relevant_ids = ratings_df[
+            (ratings_df['user_emb_id'] == user_id) & (ratings_df['rating'] >= 4.0)
+        ]['movie_emb_id'].tolist()
+
+        if not relevant_ids:
+            continue  # Skip users with no relevant ground truth
+
+        p = precision_at_k(recommended_ids, relevant_ids, k)
+        r = recall_at_k(recommended_ids, relevant_ids, k)
+
+        precisions.append(p)
+        recalls.append(r)
+
+    except Exception as e:
+        print(f"Error at user {user_index}: {e}")
+        continue
+
+# ----- Results -----
+print(f"\nAverage Precision@{k}: {sum(precisions)/len(precisions):.4f}")
+print(f"Average Recall@{k}: {sum(recalls)/len(recalls):.4f}")

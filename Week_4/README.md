@@ -1,46 +1,69 @@
-# Week 4: Classical Models & k-NN Evaluation
+# 📦 Week 4: Classical Models & Evaluation (Midterm Submission)
 
-## Objectives
-- Understand and implement user-based k-Nearest Neighbors (k-NN) for collaborative filtering.
-- Prepare and split data for offline evaluation.
-- Evaluate recommendations using Precision@k, Recall@k, and Hit Rate@k.
-- Debug and interpret recommender performance.
+This folder contains all work completed during **Week 4** of the ML Mentorship Program. The focus was on implementing **classical machine learning models** for recommendation, learning to evaluate them using relevant metrics, and reflecting on progress.
 
 ---
 
-## Tasks Completed
-- ✅ Studied k-NN collaborative filtering and evaluation metrics.
-- ✅ Preprocessed the MovieLens dataset (`ratings.csv` and `movies.csv`).
-- ✅ Implemented user-based k-NN using `sklearn.neighbors.NearestNeighbors`.
-- ✅ Split data into training and test sets for each user.
-- ✅ Evaluated recommendations with Precision@k, Recall@k, and Hit Rate@k.
-- ✅ Added debug output to inspect recommendations and test hits.
+## 📚 Objectives of Week 4
+
+- Implement classical ML models like **k-Nearest Neighbors (k-NN)** and **Logistic Regression**
+- Evaluate model performance using:
+  - **Precision@k**, **Recall@k** (for k-NN)
+  - **Accuracy**, **Precision**, **Recall** (for Logistic Regression)
+- Understand strengths/weaknesses of classical approaches in recommender systems
 
 ---
 
-## Dataset
-- **Source:** Provided `ratings.csv` (userId, movieId, rating, timestamp) and `movies.csv` (movieId, title, genres).
-- Used only userId, movieId, and rating for collaborative filtering.
-- Data is split per user into training and test sets.
+## 🧠 Learning Reflection (Week 4)
+
+| Area                      | What I Knew Before     | What I Learned / Improved In          |
+|---------------------------|------------------------|----------------------------------------|
+| Evaluation Metrics        | Only Accuracy          | Learned how to implement and apply Precision@k, Recall@k |
+| Recommender Systems       | Basic idea             | Built user-user collaborative filtering with k-NN |
+| Binary Classification     | Knew theory            | Applied Logistic Regression on real data |
+| Feature Engineering       | Little to none         | Used `user_emb_id` and `movie_emb_id` as model features |
+| Model Comparison          | Not done before        | Compared two models using meaningful metrics |
 
 ---
 
-## k-NN Recommender
+## 🧪 Work Completed
 
-- Built a user-item matrix (users as rows, movies as columns, ratings as values).
-- Fitted a k-NN model (`NearestNeighbors` with cosine similarity) on the training matrix.
-- For each user, found k most similar users (neighbors).
-- Recommended top-N movies that neighbors liked but the user has not rated in training.
+### ✅ k-NN Recommender System
+- Created **user-item matrix** from rating data
+- Implemented **cosine similarity** to find nearest neighbors
+- Generated **Top-5 recommendations** per user
+- Evaluated model using **Precision@5** and **Recall@5**
+
+### ✅ Logistic Regression Model
+- Converted ratings to binary labels (`liked` = 1 if rating ≥ 4.0)
+- Trained a **Logistic Regression** classifier using `user_emb_id`, `movie_emb_id`
+- Evaluated using **accuracy**, **precision**, **recall**
+
+### ✅ Model Comparison
+| Metric         | k-NN Recommender     | Logistic Regression       |
+|----------------|----------------------|----------------------------|
+| Precision@5    | Evaluated            | N/A                        |
+| Recall@5       | Evaluated            | N/A                        |
+| Accuracy       | N/A                  | ✅ Achieved                |
+| Precision      | N/A                  | ✅ Achieved                |
+| Recall         | N/A                  | ✅ Achieved                |
 
 ---
 
-## Evaluation
+## 📂 Folder Structure
 
-- For each user, compared recommendations to their test set ratings.
-- **Metrics:**
-  - **Precision@k:** Fraction of top-k recommendations matching the test set.
-  - **Recall@k:** Fraction of test set movies recovered.
-  - **Hit Rate@k:** Percentage of users for whom at least one test movie was recommended.
-- Printed debug info for the first five users (recommended movie IDs, test movies, intersection).
-
----
+week4_classical_models/
+├── knn.py                # Implements user-based collaborative filtering using k-NN.
+│                         # Generates top-N movie recommendations based on similar users.
+│
+├── logireg.py            # Applies Logistic Regression for binary classification of user preferences.
+│                         # Uses movie/user embeddings to predict whether a user will like a movie.
+│
+├── movie_rating.csv      # Main dataset containing user ratings.
+│                         # Includes: user_id, movieId, rating, timestamp, user_emb_id, movie_emb_id.
+│
+├── test_data.csv         # Metadata for movies.
+│                         # Includes: movieId, title, genres.
+│
+├── README.md             # Documentation of Week 4 work.
+│                         # Covers models, metrics, learnings, and project structure.
